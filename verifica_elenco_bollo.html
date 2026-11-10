@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizzatore Bollo Analitico XML</title>
+    <!-- Tailwind CSS per la grafica -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-md p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Visualizzatore Bollo Analitico</h1>
+        <p class="text-gray-600 mb-4">Incolla qui sotto il contenuto del tuo file XML:</p>
+        
+        <textarea id="xmlInput" rows="6" class="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" placeholder="<bolloAnalitico>...</bolloAnalitico>"></textarea>
+        
+        <button onclick="parseXML()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition duration-200">
+            Genera Tabella
+        </button>
+
+        <!-- Sezione Risultati (inizialmente nascosta) -->
+        <div id="resultSection" class="mt-8 hidden">
+            <!-- Riepilogo -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div><span class="font-semibold text-gray-700">Codice Fiscale:</span> <span id="resCF"></span></div>
+                <div><span class="font-semibold text-gray-700">Partita IVA:</span> <span id="resPIva"></span></div>
+                <div><span class="font-semibold text-gray-700">Anno / Trimestre:</span> <span id="resPeriodo"></span></div>
+                <div><span class="font-semibold text-gray-700">Num. Documenti:</span> <span id="resNumDoc"></span></div>
+            </div>
+
+            <!-- Tabella Fatture -->
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">Elenco Fatture</h2>
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-sm border-b border-gray-200">
+                            <th class="p-3">#</th>
+                            <th class="p-3">ID SDI</th>
+                            <th class="p-3">Data</th>
+                            <th class="p-3">Numero Fattura</th>
+                            <th class="p-3">CF Cedente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-sm text-gray-600 divide-y divide-gray-200">
+                        <!-- Popolato via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function parseXML() {
+            const xmlString = document.getElementById('xmlInput').value.trim();
+            if (!xmlString) {
+                alert("Per favore, inserisci del codice XML valido.");
+                return;
+            }
+
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+                // Controllo errori di parsing
+                const parserError = xmlDoc.querySelector("parsererror");
+                if (parserError) {
+                    alert("Errore nel formato XML. Controlla la sintassi.");
+                    return;
+                }
+
+                // Estrazione dati di testata
+                const getVal = (tag) => xmlDoc.getElementsByTagName(tag)[0]?.textContent || "-";
+                
+                document.getElementById('resCF').textContent = getVal('codiceFiscale');
+                document.getElementById('resPIva').textContent = getVal('partitaIva');
+                document.getElementById('resPeriodo').textContent = `${getVal('anno')} (T${getVal('trimestre')})`;
+                document.getElementById('resNumDoc').textContent = getVal('numDocumenti');
+
+                // Estrazione fatture
+                const fatture = xmlDoc.getElementsByTagName('fattura');
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                if (fatture.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Nessuna fattura trovata nell'XML.</td></tr>`;
+                } else {
+                    for (let i = 0; i < fatture.length; i++) {
+                        const f = fatture[i];
+                        const idsdi = f.getElementsByTagName('idsdi')[0]?.textContent || '';
+                        const data = f.getElementsByTagName('data')[0]?.textContent || '';
+                        const numeroFattura = f.getElementsByTagName('numeroFattura')[0]?.textContent || '';
+                        const cfCedente = f.getElementsByTagName('cfCedenteFattura')[0]?.textContent || '';
+
+                        const row = `
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-3 font-medium text-gray-900">${i + 1}</td>
+                                <td class="p-3 font-mono">${idsdi}</td>
+                                <td class="p-3">${data}</td>
+                                <td class="p-3 font-semibold">${numeroFattura}</td>
+                                <td class="p-3 font-mono">${cfCedente}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    }
+                }
+
+                // Mostra la sezione dei risultati
+                document.getElementById('resultSection').classList.remove('hidden');
+
+            } catch (error) {
+                console.eror(error);
+                alert("Si è verificato un errore durante la lettura dell'XML.");
+            }
+        }
+    </script>
+</body>
+</html>
